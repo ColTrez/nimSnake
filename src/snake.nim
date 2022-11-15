@@ -1,4 +1,4 @@
-import os, deques
+import os, deques, random
 import illwill
 
 # initialize the TUI
@@ -31,6 +31,7 @@ proc moveSnake(snakeRef: ptr Deque[Position], direction: Direction) =
   discard snakeRef[].popFirst
   snakeRef[].addLast(newHead)
 
+randomize()
 
 illwillInit(fullscreen=true)
 setControlCHook(exitProc)
@@ -52,9 +53,8 @@ let bottomRightY = midY + boardHeight
 
 tb.setForegroundColor(fgBlack, true)
 tb.drawRect(upperLeftX, upperLeftY, bottomRightX, bottomRightY)
-
-tb.write(2, 1, fgWhite, "Press any key to display its name")
-tb.write(2, 2, "Press ", fgYellow, "ESC", fgWhite,
+tb.setForegroundColor(fgWhite, true)
+tb.write(2, 1, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
 
 #initialize snek
@@ -74,13 +74,17 @@ var movement = Direction.right
 while true:
   # display score
   tb.write(upperLeftX, upperLeftY - 1, fgWhite, "Score: " & $score)
+  #add food
+  let foodX = rand(upperLeftX+1 .. bottomRightX-1)
+  let foodY = rand(upperLeftY+1 .. bottomRightY-1)
+  tb.write(foodX, foodY, fgYellow, "*")
   #move snek
   let oldHead = snake.peekLast
   let oldButt = snake.peekFirst
   tb.write(oldHead.x, oldHead.y, fgWhite, "#")
   moveSnake(addr snake, movement)
   let newHead = snake.peekLast
-  tb.write(newHead.x, newHead.y, fgWhite, "@")
+  tb.write(newHead.x, newHead.y, fgGreen, "@")
   tb.write(oldButt.x, oldButt.y, fgBlack, " ")
   #read key press and update movement
   var key = getKey()
