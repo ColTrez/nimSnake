@@ -1,8 +1,7 @@
-import os, strutils, deques
+import os, deques
 import illwill
 
-# 1. Initialise terminal in fullscreen mode and make sure we restore the state
-# of the terminal state when exiting.
+# initialize the TUI
 proc exitProc() {.noconv.} =
   illwillDeinit()
   showCursor()
@@ -37,10 +36,6 @@ illwillInit(fullscreen=true)
 setControlCHook(exitProc)
 hideCursor()
 
-# 2. We will construct the next frame to be displayed in this buffer and then
-# just instruct the library to display its contents to the actual terminal
-# (double buffering is enabled by default; only the differences from the
-# previous frame will be actually printed to the terminal).
 var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
 
 #get screen dimensions and board limits
@@ -55,15 +50,12 @@ let upperLeftY = midY - boardHeight
 let bottomRightX = midX + boardWidth
 let bottomRightY = midY + boardHeight
 
-# 3. Display some simple static UI that doesn't change from frame to frame.
 tb.setForegroundColor(fgBlack, true)
 tb.drawRect(upperLeftX, upperLeftY, bottomRightX, bottomRightY)
-
 
 tb.write(2, 1, fgWhite, "Press any key to display its name")
 tb.write(2, 2, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
-
 
 #initialize snek
 var snake = [Position(x: midX-1, y: midY),
