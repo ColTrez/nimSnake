@@ -17,6 +17,21 @@ type
   Direction = enum
     left, right, up, down
 
+proc moveSnake(snakeRef: ptr Deque[Position], direction: Direction) =
+  let snakeHead = snakeRef[].peekLast
+  var newHead: Position
+  case direction:
+    of Direction.up:
+      newHead = Position(x: snakeHead.x, y: snakeHead.y-1)
+    of Direction.down:
+      newHead = Position(x: snakeHead.x, y: snakeHead.y+1)
+    of Direction.right:
+      newHead = Position(x: snakeHead.x+1, y: snakeHead.y)
+    of Direction.left:
+      newHead = Position(x: snakeHead.x-1, y: snakeHead.y)
+  discard snakeRef[].popFirst
+  snakeRef[].addLast(newHead)
+
 
 illwillInit(fullscreen=true)
 setControlCHook(exitProc)
@@ -67,6 +82,14 @@ var movement = Direction.right
 while true:
   # display score
   tb.write(upperLeftX, upperLeftY - 1, fgWhite, "Score: " & $score)
+  #move snek
+  let oldHead = snake.peekLast
+  let oldButt = snake.peekFirst
+  tb.write(oldHead.x, oldHead.y, fgWhite, "#")
+  moveSnake(addr snake, movement)
+  let newHead = snake.peekLast
+  tb.write(newHead.x, newHead.y, fgWhite, "@")
+  tb.write(oldButt.x, oldButt.y, fgBlack, " ")
   #read key press and update movement
   var key = getKey()
   case key
@@ -80,5 +103,5 @@ while true:
     discard
 
   tb.display()
-  sleep(20)
+  sleep(55)
 
