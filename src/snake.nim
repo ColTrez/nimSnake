@@ -85,10 +85,18 @@ while true:
   #read key press and update movement
   var key = getKey()
   case key
-  of Key.Right, Key.D, Key.L: movement = Direction.right
-  of Key.Left, Key.A, Key.H: movement = Direction.left
-  of Key.Up, Key.W, Key.K: movement = Direction.up
-  of Key.Down, Key.S, Key.J: movement = Direction.down
+  of Key.Right, Key.D, Key.L:
+    if movement != Direction.left:
+      movement = Direction.right
+  of Key.Left, Key.A, Key.H:
+    if movement != Direction.right:
+      movement = Direction.left
+  of Key.Up, Key.W, Key.K:
+    if movement != Direction.down:
+      movement = Direction.up
+  of Key.Down, Key.S, Key.J:
+    if movement != Direction.up:
+      movement = Direction.down
   of Key.Escape, Key.Q: exitProc()
   else:
     discard
