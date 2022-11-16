@@ -8,6 +8,27 @@ proc exitProc() {.noconv.} =
   quit(0)
 
 type
+  ScreenInfo = object
+    screenWidth: int
+    screenHeight: int
+    midX: int
+    midY: int
+
+type
+  BoardInfo = object
+    boardWidth: int
+    boardHeight: int
+    upperLeftX: int
+    upperLeftY: int
+    bottomRightX: int
+    bottomRightY: int
+
+type
+  GameInfo = object
+    screenInfo: ScreenInfo
+    boardInfo: BoardInfo
+
+type
   Position = object
     x: int
     y: int
@@ -31,6 +52,11 @@ proc moveSnake(snakeRef: ptr Deque[Position], direction: Direction) =
   discard snakeRef[].popFirst
   snakeRef[].addLast(newHead)
 
+#proc eatOrDieMaybe(snakeRef: ptr Deque[Position], boardInfo: BoardInfo) =
+
+
+const BOARD_WIDTH = 50
+const BOARD_HEIGHT = 25
 randomize()
 
 illwillInit(fullscreen=true)
@@ -40,27 +66,26 @@ hideCursor()
 var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
 
 #get screen dimensions and board limits
-let screenWidth = width(tb)
-let screenHeight = height(tb)
-let boardWidth = 50
-let boardHeight = 25
-let midX = screenWidth div 2
-let midY = screenHeight div 2
-let upperLeftX = midX - boardWidth
-let upperLeftY = midY - boardHeight
-let bottomRightX = midX + boardWidth
-let bottomRightY = midY + boardHeight
+let screenInfo = ScreenInfo(screenWidth: width(tb), screenHeight: height(tb),
+    midX: width(tb) div 2, midY: height(tb) div 2)
+
+let boardInfo = BoardInfo(boardWidth: BOARD_WIDTH, boardHeight: BOARD_HEIGHT,
+    upperLeftX: screenInfo.midX - BOARD_WIDTH, upperLeftY: screenInfo.midY - BOARD_HEIGHT,
+    bottomRightX: screenInfo.midX + BOARD_WIDTH, bottomRightY: screenInfo.midY + BOARD_HEIGHT)
+
+let gameInfo = GameInfo(screenInfo: screenInfo, boardInfo: boardInfo)
 
 tb.setForegroundColor(fgBlack, true)
-tb.drawRect(upperLeftX, upperLeftY, bottomRightX, bottomRightY)
+tb.drawRect(boardInfo.upperLeftX, boardInfo.upperLeftY,
+    boardInfo.bottomRightX, boardInfo.bottomRightY)
 tb.setForegroundColor(fgWhite, true)
 tb.write(2, 1, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
 
 #initialize snek
-var snake = [Position(x: midX-1, y: midY),
-    Position(x: midX, y: midY),
-    Position(x: midX+1, y: midY)].toDeque
+var snake = [Position(x: screenInfo.midX-1, y: screenInfo.midY),
+    Position(x: screenInfo.midX, y: screenInfo.midY),
+    Position(x: screenInfo.midX+1, y: screenInfo.midY)].toDeque
 
 #draw snek
 tb.write(snake[0].x, snake[0].y, fgWhite, "#")
@@ -73,10 +98,10 @@ var movement = Direction.right
 # Main event loop
 while true:
   # display score
-  tb.write(upperLeftX, upperLeftY - 1, fgWhite, "Score: " & $score)
+  tb.write(boardInfo.upperLeftX, boardInfo.upperLeftY - 1, fgWhite, "Score: " & $score)
   #add food
-  let foodX = rand(upperLeftX+1 .. bottomRightX-1)
-  let foodY = rand(upperLeftY+1 .. bottomRightY-1)
+  let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
+  let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
   tb.write(foodX, foodY, fgYellow, "*")
   #move snek
   let oldHead = snake.peekLast
