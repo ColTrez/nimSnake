@@ -1,4 +1,4 @@
-import os, deques, random
+import os, hashes, deques, sets, random
 import illwill
 
 # initialize the TUI
@@ -37,6 +37,12 @@ type
   Direction = enum
     left, right, up, down
 
+proc hash(pos: Position): Hash =
+  var h: Hash = 0
+  h = h !& hash(pos.x)
+  h = h !& hash(pos.y)
+  result = !$h
+
 proc moveSnake(snakeRef: ptr Deque[Position], direction: Direction) =
   let snakeHead = snakeRef[].peekLast
   var newHead: Position
@@ -52,7 +58,19 @@ proc moveSnake(snakeRef: ptr Deque[Position], direction: Direction) =
   discard snakeRef[].popFirst
   snakeRef[].addLast(newHead)
 
-#proc eatOrDieMaybe(snakeRef: ptr Deque[Position], boardInfo: BoardInfo) =
+#returns true if you died
+proc eatOrDieMaybe(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
+    boardInfo: BoardInfo): bool =
+  let snakeHead = snakeRef[].peekLast
+  #check to see if you DIED
+  if snakeHead.x == boardInfo.upperLeftX or snakeHead.x == boardInfo.bottomRightX:
+    return true
+  if snakeHead.y == boardInfo.upperLeftY or snakeHead.y == boardInfo.bottomRightY:
+    return true
+  #check to see if you ate food
+  #if foodRef[].contains(snakeHead):
+    #todo: add to queue
+  return false
 
 
 const BOARD_WIDTH = 50
@@ -82,6 +100,9 @@ tb.setForegroundColor(fgWhite, true)
 tb.write(2, 1, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
 
+#initialize food set
+var foodSet: HashSet[Position]
+
 #initialize snek
 var snake = [Position(x: screenInfo.midX-1, y: screenInfo.midY),
     Position(x: screenInfo.midX, y: screenInfo.midY),
@@ -99,6 +120,13 @@ var movement = Direction.right
 while true:
   # display score
   tb.write(boardInfo.upperLeftX, boardInfo.upperLeftY - 1, fgWhite, "Score: " & $score)
+  #check for death
+  if eatOrDieMaybe(addr snake, addr foodSet, boardInfo):
+    let offset = 4
+    tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
+    tb.display()
+    sleep(100)
+    break
   #add food
   let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
   let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
