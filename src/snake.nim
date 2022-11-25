@@ -1,4 +1,4 @@
-import os, hashes, deques, sets, random, unicode
+import os, deques, random, unicode
 import illwill
 
 # initialize the TUI
@@ -41,42 +41,16 @@ type
   MovementResult = enum
     died, ate, moved
 
-proc hash(pos: Position): Hash =
-  var h: Hash = 0
-  h = h !& hash(pos.x)
-  h = h !& hash(pos.y)
-  result = !$h
-
-proc eatOrDieMaybe(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
-    boardInfo: BoardInfo): MovementResult =
-  let snakeHead = snakeRef[].peekLast
-  #check to see if you DIED
-  if snakeHead.x == boardInfo.upperLeftX or snakeHead.x == boardInfo.bottomRightX:
-    return MovementResult.died
-  if snakeHead.y == boardInfo.upperLeftY or snakeHead.y == boardInfo.bottomRightY:
-    return MovementResult.died
-  #check to see if you ate food
-  if foodRef[].contains(snakeHead):
-    foodRef[].excl(snakeHead)
-    return MovementResult.ate
-  return MovementResult.moved
-
-#returns true if you died
-proc moveSnake(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
-    boardInfo: BoardInfo, direction: Direction): MovementResult =
-  let snakeHead = snakeRef[].peekLast
-  var newHead: Position
+proc directionAsPosition(direction: Direction): Position =
   case direction:
     of Direction.up:
-      newHead = Position(x: snakeHead.x, y: snakeHead.y-1)
+      return Position(x: 0, y: -1)
     of Direction.down:
-      newHead = Position(x: snakeHead.x, y: snakeHead.y+1)
+      return Position(x: 0, y: 1)
     of Direction.right:
-      newHead = Position(x: snakeHead.x+1, y: snakeHead.y)
+      return Position(x: 1, y: 0)
     of Direction.left:
-      newHead = Position(x: snakeHead.x-1, y: snakeHead.y)
-  snakeRef[].addLast(newHead)
-  return eatOrDieMaybe(snakeRef, foodRef, boardInfo)
+      return Position(x: -1, y: 0)
 
 const BOARD_WIDTH = 50
 const BOARD_HEIGHT = 15
@@ -105,10 +79,6 @@ tb.setForegroundColor(fgWhite, true)
 tb.write(2, 1, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
 
-#initialize food set
-var foodSet: HashSet[Position]
-let firstFood = Position(x: boardInfo.upperLeftX+5, y: boardInfo.upperLeftY+5)
-discard foodSet.containsOrIncl(firstFood)
 #initialize snek
 var snake = [Position(x: screenInfo.midX-1, y: screenInfo.midY),
     Position(x: screenInfo.midX, y: screenInfo.midY),
@@ -136,27 +106,40 @@ while true:
   let oldHead = snake.peekLast
   let oldButt = snake.peekFirst
   tb.write(oldHead.x, oldHead.y, fgWhite, "#")
-  case moveSnake(addr snake, addr foodSet, boardInfo, movement):
-    of MovementResult.moved:
-      let newHead = snake.peekLast
-      tb.write(newHead.x, newHead.y, fgGreen, "@")
-      if newHead.x == food.x and newHead.y == food.y:
-        score = score + 1
-        let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
-        let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
-        food = Position(x:foodX, y:foodY)
-        tb.write(food.x, food.y, fgCyan, "*")
-      else:
-        discard snake.popFirst
-        tb.write(oldButt.x, oldButt.y, fgBlack, " ")
-    of MovementResult.ate:
-      discard
-    of MovementResult.died:
+  let movementPos = directionAsPosition(movement)
+  let newHead = Position(x: oldHead.x + movementPos.x, y: oldHead.y + movementPos.y)
+  snake.addLast(newHead)
+  #check to see if you hit a wall
+  if newHead.x == boardInfo.upperLeftX or newHead.x == boardInfo.bottomRightX or
+      newHead.y == boardInfo.upperLeftY or newHead.y == boardInfo.bottomRightY:
+        let offset = 4
+        tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
+        tb.display()
+        sleep(1000)
+        break
+  let charAhead = tb[newHead.x, newHead.y].ch
+  case charAhead:
+    of Rune('#'):
+      # snake has ran into its own body and should DIE
       let offset = 4
       tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
       tb.display()
       sleep(1000)
       break
+    of Rune('*'):
+      # snake has ran into some food and should get bigger
+      score = score + 1
+      tb.write(newHead.x, newHead.y, fgGreen, "@")
+      #generate new food
+      let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
+      let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
+      food = Position(x: foodX, y: foodY)
+      tb.write(food.x, food.y, fgCyan, "*")
+    else:
+      #snake just moved with no special event
+      discard snake.popFirst
+      tb.write(oldButt.x, oldButt.y, fgBlack, " ")
+      tb.write(newHead.x, newHead.y, fgGreen, "@")
   #read key press and update movement
   var key = getKey()
   case key
