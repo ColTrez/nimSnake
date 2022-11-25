@@ -79,7 +79,7 @@ proc moveSnake(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
   return eatOrDieMaybe(snakeRef, foodRef, boardInfo)
 
 const BOARD_WIDTH = 50
-const BOARD_HEIGHT = 25
+const BOARD_HEIGHT = 15
 randomize()
 
 illwillInit(fullscreen=true)
@@ -98,7 +98,7 @@ let boardInfo = BoardInfo(boardWidth: BOARD_WIDTH, boardHeight: BOARD_HEIGHT,
 
 let gameInfo = GameInfo(screenInfo: screenInfo, boardInfo: boardInfo)
 
-tb.setForegroundColor(fgBlack, true)
+tb.setForegroundColor(fgWhite, true)
 tb.drawRect(boardInfo.upperLeftX, boardInfo.upperLeftY,
     boardInfo.bottomRightX, boardInfo.bottomRightY)
 tb.setForegroundColor(fgWhite, true)
@@ -155,7 +155,7 @@ while true:
       let offset = 4
       tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
       tb.display()
-      sleep(100)
+      sleep(1000)
       break
   #read key press and update movement
   var key = getKey()
@@ -178,4 +178,6 @@ while true:
 
   tb.display()
   sleep(60)
+
+illwillDeinit()
 
