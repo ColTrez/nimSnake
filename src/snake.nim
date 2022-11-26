@@ -2,7 +2,7 @@ import os, deques, random, unicode, illwill
 import procsAndTypes
 
 const BOARD_WIDTH = 50
-const BOARD_HEIGHT = 15
+const BOARD_HEIGHT = 25
 randomize()
 
 illwillInit(fullscreen=true)
