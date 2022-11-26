@@ -57,6 +57,20 @@ proc youDied(tb: var TerminalBuffer, screenInfo: ScreenInfo) =
   tb.display()
   sleep(1000)
 
+proc findFoodSpot(boardInfo: BoardInfo): Position =
+  let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
+  let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
+  return Position(x:foodX, y:foodY)
+
+proc placeFood(boardInfo: BoardInfo, tb: var TerminalBuffer): Position =
+  var food = findFoodSpot(boardInfo)
+  var foodSpot = tb[food.x, food.y].ch
+  while foodSpot == Rune('@') or foodSpot == Rune('#'):
+    food = findFoodSpot(boardInfo)
+    foodSpot = tb[food.x, food.y].ch
+  tb.write(food.x, food.y, fgCyan, "*")
+  return food
+
 const BOARD_WIDTH = 50
 const BOARD_HEIGHT = 15
 randomize()
@@ -98,10 +112,7 @@ var score = 0
 var movement = Direction.right
 
 #add food
-let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
-let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
-var food = Position(x:foodX, y:foodY)
-tb.write(food.x, food.y, fgCyan, "*")
+var food = placeFood(boardInfo, tb)
 
 # Main event loop
 while true:
@@ -129,10 +140,7 @@ while true:
       score = score + 1
       tb.write(newHead.x, newHead.y, fgGreen, "@")
       #generate new food
-      let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
-      let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
-      food = Position(x: foodX, y: foodY)
-      tb.write(food.x, food.y, fgCyan, "*")
+      food = placeFood(boardInfo, tb)
     else:
       #snake just moved with no special event
       let oldButt = snake.popFirst
