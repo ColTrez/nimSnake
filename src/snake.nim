@@ -39,7 +39,7 @@ type
 
 type
   MovementResult = enum
-    died, ate, moved
+    died, moved
 
 proc hash(pos: Position): Hash =
   var h: Hash = 0
@@ -47,23 +47,20 @@ proc hash(pos: Position): Hash =
   h = h !& hash(pos.y)
   result = !$h
 
-proc eatOrDieMaybe(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
-    boardInfo: BoardInfo): MovementResult =
+proc moveOrDie(snakeRef: ptr Deque[Position], boardInfo: BoardInfo): MovementResult =
   let snakeHead = snakeRef[].peekLast
   #check to see if you DIED
   if snakeHead.x == boardInfo.upperLeftX or snakeHead.x == boardInfo.bottomRightX:
     return MovementResult.died
   if snakeHead.y == boardInfo.upperLeftY or snakeHead.y == boardInfo.bottomRightY:
     return MovementResult.died
-  #check to see if you ate food
-  if foodRef[].contains(snakeHead):
-    foodRef[].excl(snakeHead)
-    return MovementResult.ate
   return MovementResult.moved
 
-#returns true if you died
-proc moveSnake(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
-    boardInfo: BoardInfo, direction: Direction): MovementResult =
+
+proc moveSnake(snakeRef: ptr Deque[Position], boardInfo: BoardInfo, direction: Direction, runeAhead: Rune): MovementResult =
+  #if the rune in the spot being moved to is #, the snakes head is colliding with its body - so it should DIE
+  if runeAhead == Rune('#'):
+    return MovementResult.died
   let snakeHead = snakeRef[].peekLast
   var newHead: Position
   case direction:
@@ -76,7 +73,7 @@ proc moveSnake(snakeRef: ptr Deque[Position], foodRef: ptr HashSet[Position],
     of Direction.left:
       newHead = Position(x: snakeHead.x-1, y: snakeHead.y)
   snakeRef[].addLast(newHead)
-  return eatOrDieMaybe(snakeRef, foodRef, boardInfo)
+  return moveOrDie(snakeRef, boardInfo)
 
 const BOARD_WIDTH = 50
 const BOARD_HEIGHT = 25
@@ -105,10 +102,6 @@ tb.setForegroundColor(fgWhite, true)
 tb.write(2, 1, "Press ", fgYellow, "ESC", fgWhite,
                " or ", fgYellow, "Q", fgWhite, " to quit")
 
-#initialize food set
-var foodSet: HashSet[Position]
-let firstFood = Position(x: boardInfo.upperLeftX+5, y: boardInfo.upperLeftY+5)
-discard foodSet.containsOrIncl(firstFood)
 #initialize snek
 var snake = [Position(x: screenInfo.midX-1, y: screenInfo.midY),
     Position(x: screenInfo.midX, y: screenInfo.midY),
@@ -136,7 +129,8 @@ while true:
   let oldHead = snake.peekLast
   let oldButt = snake.peekFirst
   tb.write(oldHead.x, oldHead.y, fgWhite, "#")
-  case moveSnake(addr snake, addr foodSet, boardInfo, movement):
+  let runeAhead = tb[oldHead.x, oldHead.y].ch
+  case moveSnake(addr snake, boardInfo, movement, runeAhead):
     of MovementResult.moved:
       let newHead = snake.peekLast
       tb.write(newHead.x, newHead.y, fgGreen, "@")
@@ -149,13 +143,11 @@ while true:
       else:
         discard snake.popFirst
         tb.write(oldButt.x, oldButt.y, fgBlack, " ")
-    of MovementResult.ate:
-      discard
     of MovementResult.died:
       let offset = 4
       tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
       tb.display()
-      sleep(100)
+      sleep(1000)
       break
   #read key press and update movement
   var key = getKey()
@@ -178,4 +170,6 @@ while true:
 
   tb.display()
   sleep(60)
+
+illwillDeinit()
 
