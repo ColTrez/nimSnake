@@ -1,82 +1,8 @@
-import os, hashes, deques, sets, random, unicode
-import illwill
-
-# initialize the TUI
-proc exitProc() {.noconv.} =
-  illwillDeinit()
-  showCursor()
-  quit(0)
-
-type
-  ScreenInfo = object
-    screenWidth: int
-    screenHeight: int
-    midX: int
-    midY: int
-
-type
-  BoardInfo = object
-    boardWidth: int
-    boardHeight: int
-    upperLeftX: int
-    upperLeftY: int
-    bottomRightX: int
-    bottomRightY: int
-
-type
-  GameInfo = object
-    screenInfo: ScreenInfo
-    boardInfo: BoardInfo
-
-type
-  Position = object
-    x: int
-    y: int
-
-type
-  Direction = enum
-    left, right, up, down
-
-type
-  MovementResult = enum
-    died, moved
-
-proc hash(pos: Position): Hash =
-  var h: Hash = 0
-  h = h !& hash(pos.x)
-  h = h !& hash(pos.y)
-  result = !$h
-
-proc moveOrDie(snakeRef: ptr Deque[Position], boardInfo: BoardInfo): MovementResult =
-  let snakeHead = snakeRef[].peekLast
-  #check to see if you DIED
-  if snakeHead.x == boardInfo.upperLeftX or snakeHead.x == boardInfo.bottomRightX:
-    return MovementResult.died
-  if snakeHead.y == boardInfo.upperLeftY or snakeHead.y == boardInfo.bottomRightY:
-    return MovementResult.died
-  return MovementResult.moved
-
-
-proc moveSnake(snakeRef: ptr Deque[Position], boardInfo: BoardInfo, direction: Direction, runeAhead: Rune): MovementResult =
-  #if the rune in the spot being moved to is #, the snakes head is colliding with its body - so it should DIE
-  if runeAhead == Rune('#'):
-    return MovementResult.died
-  let snakeHead = snakeRef[].peekLast
-  var newHead: Position
-  case direction:
-    of Direction.up:
-      newHead = Position(x: snakeHead.x, y: snakeHead.y-1)
-    of Direction.down:
-      newHead = Position(x: snakeHead.x, y: snakeHead.y+1)
-    of Direction.right:
-      newHead = Position(x: snakeHead.x+1, y: snakeHead.y)
-    of Direction.left:
-      newHead = Position(x: snakeHead.x-1, y: snakeHead.y)
-  snakeRef[].addLast(newHead)
-  return moveOrDie(snakeRef, boardInfo)
+import os, deques, random, unicode, illwill
+import procsAndTypes
 
 const BOARD_WIDTH = 50
-const BOARD_HEIGHT = 25
+const BOARD_HEIGHT = 15
 randomize()
 
 illwillInit(fullscreen=true)
@@ -95,7 +21,7 @@ let boardInfo = BoardInfo(boardWidth: BOARD_WIDTH, boardHeight: BOARD_HEIGHT,
 
 let gameInfo = GameInfo(screenInfo: screenInfo, boardInfo: boardInfo)
 
-tb.setForegroundColor(fgBlack, true)
+tb.setForegroundColor(fgWhite, true)
 tb.drawRect(boardInfo.upperLeftX, boardInfo.upperLeftY,
     boardInfo.bottomRightX, boardInfo.bottomRightY)
 tb.setForegroundColor(fgWhite, true)
@@ -116,39 +42,38 @@ var score = 0
 var movement = Direction.right
 
 #add food
-let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
-let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
-var food = Position(x:foodX, y:foodY)
-tb.write(food.x, food.y, fgCyan, "*")
+var food = placeFood(boardInfo, tb)
 
-# Main event loop
 while true:
   # display score
   tb.write(boardInfo.upperLeftX, boardInfo.upperLeftY - 1, fgWhite, "Score: " & $score)
   #move snek
   let oldHead = snake.peekLast
-  let oldButt = snake.peekFirst
   tb.write(oldHead.x, oldHead.y, fgWhite, "#")
-  let runeAhead = tb[oldHead.x, oldHead.y].ch
-  case moveSnake(addr snake, boardInfo, movement, runeAhead):
-    of MovementResult.moved:
-      let newHead = snake.peekLast
+  let movementPos = directionAsPosition(movement)
+  let newHead = Position(x: oldHead.x + movementPos.x, y: oldHead.y + movementPos.y)
+  snake.addLast(newHead)
+  #check to see if you hit a wall
+  if newHead.x == boardInfo.upperLeftX or newHead.x == boardInfo.bottomRightX or
+      newHead.y == boardInfo.upperLeftY or newHead.y == boardInfo.bottomRightY:
+        youDied(tb, screenInfo)
+        exitProc()
+  let charAhead = tb[newHead.x, newHead.y].ch
+  case charAhead:
+    of Rune('#'):
+      # snake has ran into its own body and should DIE
+      youDied(tb, screenInfo)
+      exitProc()
+    of Rune('*'):
+      # snake has ran into some food and should get bigger
+      score = score + 1
       tb.write(newHead.x, newHead.y, fgGreen, "@")
-      if newHead.x == food.x and newHead.y == food.y:
-        score = score + 1
-        let foodX = rand(boardInfo.upperLeftX+1 .. boardInfo.bottomRightX-1)
-        let foodY = rand(boardInfo.upperLeftY+1 .. boardInfo.bottomRightY-1)
-        food = Position(x:foodX, y:foodY)
-        tb.write(food.x, food.y, fgCyan, "*")
-      else:
-        discard snake.popFirst
-        tb.write(oldButt.x, oldButt.y, fgBlack, " ")
-    of MovementResult.died:
-      let offset = 4
-      tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
-      tb.display()
-      sleep(1000)
-      break
+      food = placeFood(boardInfo, tb)
+    else:
+      #snake just moved with no special event
+      let oldButt = snake.popFirst
+      tb.write(oldButt.x, oldButt.y, fgBlack, " ")
+      tb.write(newHead.x, newHead.y, fgGreen, "@")
   #read key press and update movement
   var key = getKey()
   case key
@@ -171,5 +96,4 @@ while true:
   tb.display()
   sleep(60)
 
-illwillDeinit()
-
+exitProc()
