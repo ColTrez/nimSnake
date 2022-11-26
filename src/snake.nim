@@ -42,7 +42,8 @@ var score = 0
 var movement = Direction.right
 
 #add food
-var food = placeFood(boardInfo, tb)
+let startingSnakeLength = 3
+var food = placeFood(boardInfo, tb, startingSnakeLength, snake.peekLast)
 
 while true:
   # display score
@@ -68,7 +69,7 @@ while true:
       # snake has ran into some food and should get bigger
       score = score + 1
       tb.write(newHead.x, newHead.y, fgGreen, "@")
-      food = placeFood(boardInfo, tb)
+      food = placeFood(boardInfo, tb, startingSnakeLength+score, newHead)
     else:
       #snake just moved with no special event
       let oldButt = snake.popFirst
