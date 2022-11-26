@@ -1,7 +1,6 @@
 import os, deques, random, unicode
 import illwill
 
-# initialize the TUI
 proc exitProc() {.noconv.} =
   illwillDeinit()
   showCursor()
@@ -51,6 +50,12 @@ proc directionAsPosition(direction: Direction): Position =
       return Position(x: 1, y: 0)
     of Direction.left:
       return Position(x: -1, y: 0)
+
+proc youDied(tb: var TerminalBuffer, screenInfo: ScreenInfo) =
+  let offset = 4
+  tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
+  tb.display()
+  sleep(1000)
 
 const BOARD_WIDTH = 50
 const BOARD_HEIGHT = 15
@@ -104,7 +109,6 @@ while true:
   tb.write(boardInfo.upperLeftX, boardInfo.upperLeftY - 1, fgWhite, "Score: " & $score)
   #move snek
   let oldHead = snake.peekLast
-  let oldButt = snake.peekFirst
   tb.write(oldHead.x, oldHead.y, fgWhite, "#")
   let movementPos = directionAsPosition(movement)
   let newHead = Position(x: oldHead.x + movementPos.x, y: oldHead.y + movementPos.y)
@@ -112,20 +116,14 @@ while true:
   #check to see if you hit a wall
   if newHead.x == boardInfo.upperLeftX or newHead.x == boardInfo.bottomRightX or
       newHead.y == boardInfo.upperLeftY or newHead.y == boardInfo.bottomRightY:
-        let offset = 4
-        tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
-        tb.display()
-        sleep(1000)
-        break
+        youDied(tb, screenInfo)
+        exitProc()
   let charAhead = tb[newHead.x, newHead.y].ch
   case charAhead:
     of Rune('#'):
       # snake has ran into its own body and should DIE
-      let offset = 4
-      tb.write(screenInfo.midX-offset, screenInfo.midY, fgRed, "YOU DIED")
-      tb.display()
-      sleep(1000)
-      break
+      youDied(tb, screenInfo)
+      exitProc()
     of Rune('*'):
       # snake has ran into some food and should get bigger
       score = score + 1
@@ -137,7 +135,7 @@ while true:
       tb.write(food.x, food.y, fgCyan, "*")
     else:
       #snake just moved with no special event
-      discard snake.popFirst
+      let oldButt = snake.popFirst
       tb.write(oldButt.x, oldButt.y, fgBlack, " ")
       tb.write(newHead.x, newHead.y, fgGreen, "@")
   #read key press and update movement
@@ -162,5 +160,4 @@ while true:
   tb.display()
   sleep(60)
 
-illwillDeinit()
-
+exitProc()
